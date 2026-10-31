@@ -1,0 +1,20 @@
+[
+  {"q": "Clinic ke timings kya hain? What are your opening hours?",
+   "keywords": ["timings", "time", "open", "hours", "khula", "band", "lunch"],
+   "a": "Peer se Hafta subah 10 baje se shaam 6 baje tak khule hain. 1 se 2 baje lunch break hota hai. Itwaar ko clinic band rehta hai."},
+  {"q": "Fees kitni hain? How much does it cost?",
+   "keywords": ["fees", "fee", "price", "cost", "kitni", "charges", "cleaning", "scaling", "filling", "root", "canal", "checkup"],
+   "a": "Checkup Rs 1,500. Scaling aur cleaning Rs 4,000. Filling Rs 3,000 se shuru. Root canal Rs 12,000 se shuru. Final fees doctor mu'ayena ke baad batate hain."},
+  {"q": "Clinic ka address kya hai? Where are you located?",
+   "keywords": ["address", "location", "where", "kahan", "pata", "located"],
+   "a": "Shifa Dental Care, Main Boulevard, Lahore (demo address). Parking building ke peeche maujood hai."},
+  {"q": "Appointment cancel ya reschedule kaise karein? Cancellation policy",
+   "keywords": ["cancel", "reschedule", "policy", "change", "badalna"],
+   "a": "Kam az kam 4 ghante pehle cancel kar dein, koi charge nahi. Booking ID aur phone number bata kar yahin cancel ho jati hai."},
+  {"q": "Payment ke tareeqe? Which payment methods do you accept?",
+   "keywords": ["payment", "pay", "cash", "card", "jazzcash", "easypaisa", "adaigi"],
+   "a": "Cash, JazzCash, Easypaisa aur debit/credit card qabool hain."},
+  {"q": "Emergency mein kya karein? Severe pain or swelling",
+   "keywords": ["emergency", "pain", "dard", "swelling", "sujan", "bleeding", "khoon"],
+   "a": "Shadeed dard, sujan ya khoon rukne ka naam na le to foran clinic phone karein: 0300-0000000. Hum diagnosis chat par nahi kar sakte."}
+]
