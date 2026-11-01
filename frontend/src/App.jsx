@@ -8,7 +8,7 @@ const LABELS = {
 };
 const STARTERS = [
   "Kal shaam ko koi waqt mil sakta hai?",
-  "Teeth cleaning ki fees kitni hai?",
+  "Clinic kahan hai aur kaun si doctor hain?",
   "Clinic ke timings kya hain?",
 ];
 
@@ -70,7 +70,7 @@ export default function App() {
       <aside className="diary">
         <h1>Mulaqat</h1>
         <p className="tag">
-          Shifa Dental Care ka AI receptionist. Roman Urdu, Urdu ya English mein baat karein.
+          Multan Dental Clinic ka AI receptionist (unofficial demo). Roman Urdu, Urdu ya English mein baat karein.
         </p>
         <h2>Diary</h2>
         {appts.length === 0 ? (
