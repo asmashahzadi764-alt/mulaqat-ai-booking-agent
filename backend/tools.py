@@ -24,8 +24,8 @@ def check_slots(day: str) -> dict:
         return {"error": "Date YYYY-MM-DD format mein dein."}
     if d < date.today():
         return {"error": "Yeh date guzar chuki hai."}
-    if d.weekday() == 6:
-        return {"day": day, "free": [], "note": "Itwaar ko clinic band hota hai."}
+    if d.weekday() not in db.OPEN_DAYS:
+        return {"day": day, "free": [], "note": "Is din (Itwaar) clinic band hota hai."}
     with db.conn() as c:
         rows = c.execute(
             "SELECT time FROM appointments WHERE day=? AND status='confirmed'", (day,)
