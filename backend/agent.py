@@ -2,6 +2,7 @@
 result is returned as a trace so the UI can show *why* the agent acted."""
 import json
 import os
+import re
 from datetime import date, timedelta
 
 import tools
@@ -65,16 +66,26 @@ def run_agent(history: list[dict]) -> tuple[str, list[dict]]:
 
 
 def mock_agent(text: str) -> tuple[str, list[dict]]:
-    """Demo mode without an API key: slot lookup and FAQ only."""
-    t, trace = text.lower(), []
-    day = None
-    if any(w in t for w in ("kal", "tomorrow")):
-        day = date.today() + timedelta(days=1)
-    elif any(w in t for w in ("aaj", "today")):
-        day = date.today()
-    if day:
-        out = tools.check_slots(day.isoformat())
-        trace.append({"tool": "check_slots", "input": {"day": day.isoformat()}, "output": out})
+    """Demo mode without an API key: rule-based slot lookup and FAQ only."""
+    words, trace = set(re.findall(r"\w+", text.lower())), []
+    offset = None
+    if words & {"kal", "kl", "tomorrow"}:
+        offset = 1
+    elif words & {"aaj", "aj", "today"}:
+        offset = 0
+    elif words & {"parson", "parso", "parsoon"}:
+        offset = 2
+    wants_slot = bool(words & {"appointment", "apointment", "checkup", "book", "booking", "slot", "slots", "mily", "milay", "mil", "available"})
+    if wants_slot and offset is None:
+        return "Kis din aana chahenge? Aaj, kal ya parson bata dein.", trace
+    if offset is not None and wants_slot:
+        day = date.today() + timedelta(days=offset)
+        for _ in range(7):  # skip closed days (e.g. Sunday) until a day has free slots
+            out = tools.check_slots(day.isoformat())
+            trace.append({"tool": "check_slots", "input": {"day": day.isoformat()}, "output": out})
+            if out.get("free"):
+                break
+            day += timedelta(days=1)
         free = ", ".join(out.get("free", [])[:8]) or "koi slot nahi"
         return (f"{day.strftime('%d %b')} ke khali waqt: {free}. "
                 "(Demo mode: booking ke liye ANTHROPIC_API_KEY set karein.)"), trace

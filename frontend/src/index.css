@@ -37,7 +37,7 @@ button, input { font: inherit; }
 .starters button { border: 1px solid var(--emerald); background: transparent; color: var(--emerald); padding: 8px 14px; border-radius: 4px; cursor: pointer; }
 .starters button:hover { background: var(--emerald); color: var(--ivory); }
 .msg { max-width: 60ch; margin-bottom: 18px; white-space: pre-wrap; }
-.msg.assistant { font: 400 1.1rem/1.65 var(--serif); }
+.msg.assistant { font: 400 1.1rem/1.65 var(--serif); font-variant-numeric: lining-nums; }
 .msg.user { margin-left: auto; width: fit-content; background: var(--emerald); color: var(--ivory); padding: 10px 16px; border-radius: 16px 16px 4px 16px; }
 .pending { color: var(--muted); font-style: italic; }
 .error { color: var(--burgundy); font-weight: 500; }
