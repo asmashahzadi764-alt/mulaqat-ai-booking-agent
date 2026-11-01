@@ -3,8 +3,14 @@ at the database level, even if two chats race for the same slot."""
 import sqlite3
 
 DB = "mulaqat.db"
-# 10:00-17:30 in 30-minute steps, 13:00-14:00 is lunch.
-SLOTS = [f"{h:02d}:{m}" for h in range(10, 18) for m in ("00", "30") if h != 13]
+# Multan Dental Clinic (public listing): Mon-Sat, 10:00-13:00 and 16:30-20:00.
+# 30-minute slots; the last slot of each session starts 30 minutes before closing.
+OPEN_DAYS = {0, 1, 2, 3, 4, 5}  # Monday=0 ... Saturday=5
+SLOTS = (
+    [f"{h:02d}:{m}" for h in (10, 11, 12) for m in ("00", "30")]
+    + ["16:30"]
+    + [f"{h:02d}:{m}" for h in (17, 18, 19) for m in ("00", "30")]
+)
 
 
 def conn() -> sqlite3.Connection:
