@@ -88,8 +88,7 @@ def mock_agent(text: str) -> tuple[str, list[dict]]:
                 break
             day += timedelta(days=1)
         free = ", ".join(out.get("free", [])[:8]) or "koi slot nahi"
-        return (f"{day.strftime('%d %b')} ke khali waqt: {free}. "
-                "(Demo mode: booking ke liye ANTHROPIC_API_KEY set karein.)"), trace
+        return f"{day.strftime('%d %b')} ke khali waqt: {free}.", trace
     out = tools.search_faq(text)
     trace.append({"tool": "search_faq", "input": {"query": text}, "output": out})
     if out["matches"]:
