@@ -3,11 +3,18 @@ result is returned as a trace so the UI can show *why* the agent acted."""
 import json
 import os
 import re
+import time
 from datetime import date, timedelta
 
 import tools
 
-MODEL = os.getenv("MULAQAT_MODEL", "claude-sonnet-5-5")
+CLAUDE_MODEL = os.getenv("MULAQAT_MODEL", "claude-sonnet-5-5")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")  # alias: always the current Flash model
+# If the main model is overloaded (503) or retired (404), try these in order.
+GEMINI_FALLBACKS = [m.strip() for m in os.getenv(
+    "GEMINI_FALLBACKS", "gemini-3.1-flash-lite,gemini-3.5-flash-lite").split(",") if m.strip()]
+RETRYABLE = {404, 429, 500, 502, 503, 504}
+FALLBACK = "Maaf kijiye, kuch masla aaya. Dobara koshish karein."
 MAX_STEPS = 6
 S = {"type": "string"}
 
@@ -43,14 +50,98 @@ Today is {today.isoformat()} ({today.strftime('%A')}).
 - You cannot diagnose or give medical advice. For pain or swelling, share the emergency guidance from search_faq."""
 
 
+def provider() -> str:
+    if os.getenv("GEMINI_API_KEY"):
+        return "gemini"
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return "claude"
+    return "demo"
+
+
 def run_agent(history: list[dict]) -> tuple[str, list[dict]]:
+    if provider() == "gemini":
+        return _run_gemini(history)
+    return _run_claude(history)
+
+
+def _gemini_tools():
+    from google.genai import types
+
+    kinds = {"string": "STRING", "integer": "INTEGER"}
+    decls = []
+    for t in TOOLS:
+        props = {
+            k: types.Schema(type=kinds[v["type"]], description=v.get("description"))
+            for k, v in t["input_schema"]["properties"].items()
+        }
+        decls.append(types.FunctionDeclaration(
+            name=t["name"], description=t["description"],
+            parameters=types.Schema(type="OBJECT", properties=props,
+                                    required=t["input_schema"]["required"])))
+    return [types.Tool(function_declarations=decls)]
+
+
+def _generate(client, models, contents, config):
+    """Call Gemini, retrying overloads and falling back to the next model.
+    Returns (response, model_used)."""
+    from google.genai import errors
+
+    last = None
+    for model in models:
+        for attempt in range(2):
+            try:
+                return client.models.generate_content(model=model, contents=contents, config=config), model
+            except errors.APIError as e:
+                last = e
+                if e.code not in RETRYABLE:
+                    raise
+                if e.code == 404:
+                    break  # model retired: go straight to the next one
+                time.sleep(1.5 * (attempt + 1))
+    raise last
+
+
+def _run_gemini(history: list[dict]) -> tuple[str, list[dict]]:
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt(), tools=_gemini_tools(), max_output_tokens=1000,
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
+    contents = [types.Content(role="user" if m["role"] == "user" else "model",
+                              parts=[types.Part(text=m["content"])]) for m in history]
+    trace: list[dict] = []
+    models = [GEMINI_MODEL, *GEMINI_FALLBACKS]
+    for _ in range(MAX_STEPS):
+        r, used = _generate(client, models, contents, config)
+        models = [used] * 2  # stay on the model that worked for the rest of this chat turn
+        if not r.candidates or not r.candidates[0].content:
+            return FALLBACK, trace
+        content = r.candidates[0].content
+        calls = [p.function_call for p in (content.parts or []) if p.function_call]
+        if not calls:
+            text = "".join(p.text or "" for p in (content.parts or []) if p.text).strip()
+            return text or FALLBACK, trace
+        contents.append(content)  # keep the model turn exactly as returned
+        parts = []
+        for c in calls:
+            out = tools.dispatch(c.name, dict(c.args or {}))
+            trace.append({"tool": c.name, "input": dict(c.args or {}), "output": out})
+            parts.append(types.Part(function_response=types.FunctionResponse(
+                id=getattr(c, "id", None), name=c.name, response={"result": out})))
+        contents.append(types.Content(role="user", parts=parts))
+    return FALLBACK, trace
+
+
+def _run_claude(history: list[dict]) -> tuple[str, list[dict]]:
     import anthropic  # imported lazily so demo mode needs no key
 
     client = anthropic.Anthropic()
     messages, trace = list(history), []
     for _ in range(MAX_STEPS):
         r = client.messages.create(
-            model=MODEL, max_tokens=1000, system=system_prompt(), tools=TOOLS, messages=messages
+            model=CLAUDE_MODEL, max_tokens=1000, system=system_prompt(), tools=TOOLS, messages=messages
         )
         messages.append({"role": "assistant", "content": r.content})
         calls = [b for b in r.content if b.type == "tool_use"]
@@ -63,7 +154,7 @@ def run_agent(history: list[dict]) -> tuple[str, list[dict]]:
             results.append({"type": "tool_result", "tool_use_id": c.id,
                             "content": json.dumps(out, ensure_ascii=False)})
         messages.append({"role": "user", "content": results})
-    return "Maaf kijiye, kuch masla aaya. Dobara koshish karein.", trace
+    return FALLBACK, trace
 
 
 def mock_agent(text: str) -> tuple[str, list[dict]]:
