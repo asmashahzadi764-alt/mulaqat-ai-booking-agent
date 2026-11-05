@@ -54,6 +54,10 @@ def book_appointment(name: str, phone: str, day: str, time: str, service: str = 
 
 
 def cancel_appointment(booking_id: int, phone: str) -> dict:
+    try:
+        booking_id = int(booking_id)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "Booking ID number honi chahiye."}
     clean = re.sub(r"[\s-]", "", phone or "")
     with db.conn() as c:
         cur = c.execute(
