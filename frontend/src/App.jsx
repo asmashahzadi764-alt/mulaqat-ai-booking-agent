@@ -1,189 +1,174 @@
 import { useEffect, useRef, useState } from "react";
+import Console from "./Console.jsx";
+import useReveal from "./useReveal.js";
 
-const STARTERS = [
-  "Kal shaam ko koi waqt mil sakta hai?",
-  "Clinic kahan hai aur kaun si doctor hain?",
-  "Clinic ke timings kya hain?",
+const STACK = ["React 19", "Vite", "FastAPI", "Gemini API", "SQLite", "JWT", "pytest", "GitHub Actions"];
+
+const PROBLEMS = [
+  ["Calls go unanswered", "Patients message after hours and nobody replies until the next day."],
+  ["Language gap", "Most booking tools speak English. Patients write Roman Urdu and Urdu."],
+  ["Manual diaries", "Paper and WhatsApp bookings clash, and double bookings waste a doctor's time."],
 ];
 
-function prettyDay(iso) {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso ?? "";
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
+const FEATURES = [
+  ["Tool-calling agent", "The model decides when to check the diary, book or cancel. It is not a script, and each step runs real code.", "wide"],
+  ["Urdu-first", "Replies in the patient's own language and script: Roman Urdu, Urdu or English.", ""],
+  ["Agent ledger", "Every decision is logged beside the chat, with the exact data the agent saw.", ""],
+  ["Safe booking", "A database rule makes double booking impossible, even if two chats race for one slot.", ""],
+  ["Grounded answers", "Timings, address and doctor come from a knowledge base. Fees are never invented.", "wide"],
+  ["Owner dashboard", "JWT login unlocks full phone numbers and cancellation. Public visitors see masked numbers.", ""],
+];
 
-function summarize({ tool, output: o = {} }) {
-  if (tool === "check_slots")
-    return o.error ?? (o.free?.length ? `${prettyDay(o.day)}: ${o.free.length} slots free` : `${prettyDay(o.day)}: closed`);
-  if (tool === "book_appointment")
-    return o.ok ? `Booking #${o.booking_id} confirmed for ${prettyDay(o.day)}, ${o.time}` : `Not booked: ${o.error}`;
-  if (tool === "cancel_appointment")
-    return o.ok ? `Booking #${o.cancelled} cancelled` : `Not cancelled: ${o.error}`;
-  if (tool === "search_faq")
-    return o.matches?.length ? `Found: ${o.matches[0].q.split("?")[0]}` : "Nothing matching in clinic info";
-  return "";
-}
+const STEPS = [
+  ["Ask", "The patient writes in their own words, like \"kal shaam ko waqt mil sakta hai?\"."],
+  ["The agent checks", "It calls the diary tool, reads the free slots and offers times as tappable buttons."],
+  ["Confirmed", "After a clear yes, it books the slot and hands back a booking ID."],
+];
 
-const LABELS = {
-  check_slots: "Checked the diary",
-  book_appointment: "Booked a slot",
-  cancel_appointment: "Cancelled a booking",
-  search_faq: "Looked up clinic info",
-};
+const FAQ = [
+  ["Is this the clinic's official tool?", "No. It is an unofficial portfolio demo built only from the clinic's public listing (address and timings). Fees, policies and bookings are not real."],
+  ["Which languages does it understand?", "Roman Urdu, Urdu and English. It answers in the language and script the patient used."],
+  ["Can it double book a slot?", "No. SQLite enforces a unique confirmed slot per day and time, so a clash is rejected even if the AI makes a mistake."],
+  ["Can it invent fees or policies?", "It is instructed to use only the clinic knowledge base, and the fees entry says the clinic confirms fees after examination."],
+  ["How is the owner area protected?", "Login uses a server-side password and a signed JWT. The chat endpoint and login are rate limited."],
+];
+
+function Counter({ to }) {
+  const ref = useRef(null);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setN(to); return; }
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const tick = (t) => {
+        const p = Math.min((t - t0) / 1200, 1);
+        setN(Math.round(to * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, { threshold: 0.6 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to]);
+  return <span ref={ref}>{n}</span>;
+}
 
 export default function App() {
-  const [history, setHistory] = useState([]);
-  const [trace, setTrace] = useState([]);
-  const [appts, setAppts] = useState([]);
-  const [mode, setMode] = useState("");
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const endRef = useRef(null);
-
-  const loadAppts = () =>
-    fetch("/api/appointments").then((r) => r.json()).then(setAppts).catch(() => {});
-
-  useEffect(() => {
-    loadAppts();
-    fetch("/api/health").then((r) => r.json()).then((d) => setMode(d.mode)).catch(() => {});
-  }, []);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [history, busy]);
-
-  async function send(msg) {
-    const content = msg.trim();
-    if (!content || busy) return;
-    const next = [...history, { role: "user", content }];
-    setHistory(next);
-    setText("");
-    setBusy(true);
-    setError("");
-    try {
-      const r = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
-      });
-      if (!r.ok) throw new Error();
-      const data = await r.json();
-      const lookup = [...data.trace].reverse().find((x) => x.tool === "check_slots" && x.output?.free?.length);
-      setHistory([
-        ...next,
-        { role: "assistant", content: data.reply, slots: lookup ? lookup.output : null },
-      ]);
-      setTrace((t) => [...data.trace.map((x) => ({ ...x, at: new Date() })), ...t]);
-      loadAppts();
-    } catch {
-      setHistory(history);
-      setText(content);
-      setError("Server se rabta nahi hua. Check karein ke backend port 8000 par chal raha hai.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function cancel(id) {
-    await fetch(`/api/appointments/${id}`, { method: "DELETE" });
-    loadAppts();
-  }
-
+  useReveal();
   return (
-    <div className="shell">
-      <aside className="diary">
-        <h1>Mulaqat</h1>
-        <p className="tag">AI receptionist jo Urdu mein baat karta hai.</p>
-        <h2>Upcoming bookings</h2>
-        {appts.length === 0 ? (
-          <p className="empty">Abhi koi booking nahi.</p>
-        ) : (
-          <ul className="appts">
-            {appts.map((a) => (
-              <li key={a.id}>
-                <div className="when">{prettyDay(a.day)}, {a.time}</div>
-                <div>{a.name} ({a.service})</div>
-                <button onClick={() => cancel(a.id)}>Cancel booking #{a.id}</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-
-      <main className="chat">
-        <header className="bar">
-          <div>
-            <h2>Multan Dental Clinic</h2>
-            <p>Mon to Sat, 10:00 to 1:00 and 4:30 to 8:00, Multan Cantt. Unofficial demo.</p>
-          </div>
-          {mode && <span className={`mode ${mode}`}>{mode === "live" ? "Live AI" : "Demo mode"}</span>}
-        </header>
-        {mode === "demo" && (
-          <p className="notice">
-            Demo mode: abhi sirf waqt dekhna aur sawal-jawab chalte hain. Booking ke liye AI key lagani hogi.
-          </p>
-        )}
-        <div className="log" role="log" aria-live="polite">
-          {history.length === 0 && (
-            <div className="welcome">
-              <p className="lead">Assalam o alaikum, aap ko kab aana hai?</p>
-              <div className="starters">
-                {STARTERS.map((s) => (
-                  <button key={s} onClick={() => send(s)}>{s}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          {history.map((m, i) => (
-            <div key={i} className={`row ${m.role}`}>
-              <p className={`msg ${m.role}`}>{m.content}</p>
-              {m.slots && (
-                <div className="chips">
-                  {m.slots.free.map((t) => (
-                    <button key={t} disabled={busy} onClick={() => send(`${m.slots.day} ko ${t} par appointment chahiye`)}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          {busy && <p className="msg assistant pending">Diary dekh raha hoon...</p>}
-          {error && <p className="error" role="alert">{error}</p>}
-          <div ref={endRef} />
+    <>
+      <nav className="nav">
+        <a className="logo" href="#top"><span className="dot" />Mulaqat</a>
+        <div className="links">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#demo">Demo</a>
+          <a href="#faq">FAQ</a>
         </div>
-        <form className="composer" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Yahan likhein, jaise: parson 4 baje appointment chahiye"
-            aria-label="Message"
-          />
-          <button type="submit" disabled={busy || !text.trim()}>Send</button>
-        </form>
-      </main>
+        <a className="btn small" href="#demo">Try demo</a>
+      </nav>
 
-      <aside className="ledger">
-        <h2>Agent ledger</h2>
-        <p className="tag">Agent ne kya kiya, har qadam yahan likha jata hai.</p>
-        {trace.length === 0 ? (
-          <p className="empty">Pehli entry yahan aaye gi.</p>
-        ) : (
-          <ol>
-            {trace.map((t, i) => (
-              <li key={i}>
-                <div className="head">
-                  <strong>{LABELS[t.tool] ?? t.tool}</strong>
-                  <time>{t.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
-                </div>
-                <p className="sum">{summarize(t)}</p>
-                <details>
-                  <summary>Raw data</summary>
-                  <pre>{JSON.stringify({ input: t.input, output: t.output }, null, 1)}</pre>
-                </details>
-              </li>
-            ))}
-          </ol>
-        )}
-      </aside>
-    </div>
+      <header className="hero" id="top">
+        <div className="beam b1" /><div className="beam b2" /><div className="beam b3" />
+        <div className="orb o1" /><div className="orb o2" />
+        <p className="badge" data-reveal>Urdu-first AI receptionist</p>
+        <h1 data-reveal style={{ "--d": "80ms" }}>The AI receptionist that speaks your patients' language</h1>
+        <p className="sub" data-reveal style={{ "--d": "160ms" }}>
+          Mulaqat books appointments in Roman Urdu, Urdu or English with a tool-calling agent that shows its work.
+        </p>
+        <div className="cta" data-reveal style={{ "--d": "240ms" }}>
+          <a className="btn" href="#demo">Try the demo</a>
+          <a className="btn ghost" href="#how">How it works</a>
+        </div>
+        <div className="float-card" aria-label="Example conversation">
+          <span className="tagline">Example conversation</span>
+          <p className="b u" style={{ "--i": 0 }}>Kal shaam ko appointment mil sakti hai?</p>
+          <p className="b t" style={{ "--i": 1 }}>Checked the diary: 13 slots free</p>
+          <p className="b a" style={{ "--i": 2 }}>Ji, shaam 4:30 se raat 8 baje tak waqt hai. Kaun sa waqt theek rahega?</p>
+          <p className="b u" style={{ "--i": 3 }}>5 baje</p>
+        </div>
+      </header>
+
+      <div className="marquee" aria-label="Built with">
+        <div className="track">
+          {[...STACK, ...STACK].map((s, i) => <span key={i}>{s}</span>)}
+        </div>
+      </div>
+
+      <section className="sec">
+        <p className="badge" data-reveal>The challenge</p>
+        <h2 data-reveal>Clinics are busy. Patients still need answers.</h2>
+        <div className="grid3">
+          {PROBLEMS.map(([t, d], i) => (
+            <article key={t} className="card" data-reveal style={{ "--d": `${i * 90}ms` }}>
+              <h3>{t}</h3><p>{d}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="sec" id="features">
+        <p className="badge" data-reveal>Capabilities</p>
+        <h2 data-reveal>Everything a front desk needs, built on an agent</h2>
+        <div className="bento">
+          {FEATURES.map(([t, d, w], i) => (
+            <article key={t} className={`card glow ${w}`} data-reveal style={{ "--d": `${i * 70}ms` }}>
+              <h3>{t}</h3><p>{d}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="sec" id="how">
+        <p className="badge" data-reveal>Process</p>
+        <h2 data-reveal>How Mulaqat works</h2>
+        <ol className="steps">
+          {STEPS.map(([t, d], i) => (
+            <li key={t} data-reveal style={{ "--d": `${i * 120}ms` }}>
+              <span className="num">{i + 1}</span>
+              <h3>{t}</h3><p>{d}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="sec stats" data-reveal>
+        <div><b><Counter to={4} /></b><span>agent tools</span></div>
+        <div><b><Counter to={13} /></b><span>daily slots</span></div>
+        <div><b><Counter to={13} /></b><span>automated tests</span></div>
+        <div><b><Counter to={3} /></b><span>languages</span></div>
+      </section>
+
+      <section className="sec" id="demo">
+        <p className="badge" data-reveal>Live demo</p>
+        <h2 data-reveal>Try it yourself</h2>
+        <p className="lede" data-reveal>Ask for a time, a fee or the address. Watch the ledger on the right as the agent works.</p>
+        <div data-reveal><Console /></div>
+      </section>
+
+      <section className="sec narrow" id="faq">
+        <p className="badge" data-reveal>FAQ</p>
+        <h2 data-reveal>Questions, answered</h2>
+        {FAQ.map(([q, a]) => (
+          <details key={q} className="faq" data-reveal>
+            <summary>{q}</summary><p>{a}</p>
+          </details>
+        ))}
+      </section>
+
+      <section className="sec final" data-reveal>
+        <h2>See the agent book an appointment</h2>
+        <a className="btn" href="#demo">Open the demo</a>
+      </section>
+
+      <footer className="foot">
+        <span className="logo"><span className="dot" />Mulaqat</span>
+        <p>Unofficial demo for Multan Dental Clinic, built only from publicly listed information. Not affiliated with or endorsed by the clinic.</p>
+      </footer>
+    </>
   );
 }
