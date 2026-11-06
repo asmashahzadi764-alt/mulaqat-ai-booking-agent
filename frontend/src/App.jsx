@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import Console from "./Console.jsx";
 import useReveal from "./useReveal.js";
 
+const PORTFOLIO = "https://asmashahzadi764-alt.github.io/Personal-Portfolio/";
 const STACK = ["React 19", "Vite", "FastAPI", "Gemini API", "SQLite", "JWT", "pytest", "GitHub Actions"];
+const TOOLS = ["check_slots", "book_appointment", "cancel_appointment", "search_faq"];
 
 const PROBLEMS = [
   ["Calls go unanswered", "Patients message after hours and nobody replies until the next day."],
@@ -11,18 +13,84 @@ const PROBLEMS = [
 ];
 
 const FEATURES = [
-  ["Tool-calling agent", "The model decides when to check the diary, book or cancel. It is not a script, and each step runs real code.", "wide"],
-  ["Urdu-first", "Replies in the patient's own language and script: Roman Urdu, Urdu or English.", ""],
-  ["Agent ledger", "Every decision is logged beside the chat, with the exact data the agent saw.", ""],
-  ["Safe booking", "A database rule makes double booking impossible, even if two chats race for one slot.", ""],
-  ["Grounded answers", "Timings, address and doctor come from a knowledge base. Fees are never invented.", "wide"],
-  ["Owner dashboard", "JWT login unlocks full phone numbers and cancellation. Public visitors see masked numbers.", ""],
+  {
+    n: "01", t: "Tool-calling agent", wide: true,
+    d: "The model decides when to check the diary, book or cancel. It is not a script, and every step runs real code.",
+    v: () => <div className="tools">{TOOLS.map((t, i) => <span key={t} style={{ "--i": i }}>{t}</span>)}</div>,
+  },
+  {
+    n: "02", t: "Urdu-first",
+    d: "Replies in the patient's own language and script.",
+    v: () => (
+      <div className="langs">
+        <p>Kal waqt hai?</p>
+        <p lang="ur" dir="rtl">کل وقت ہے؟</p>
+        <p>Any slot tomorrow?</p>
+      </div>
+    ),
+  },
+  {
+    n: "03", t: "Safe booking",
+    d: "A database rule blocks double booking, even when two chats race for one slot.",
+    v: () => (
+      <div className="slotgrid">
+        <span>10:00</span><span className="taken">10:30 taken</span><span>11:00</span>
+        <span>11:30</span><span>12:00</span><span>12:30</span>
+      </div>
+    ),
+  },
+  {
+    n: "04", t: "Agent ledger", wide: true,
+    d: "Every decision is logged beside the chat, with the exact data the agent saw. Nothing happens in the dark.",
+    v: () => (
+      <div className="mini">
+        <div style={{ "--i": 0 }}><b>Checked the diary</b> Sat 7 Nov: 13 slots free</div>
+        <div style={{ "--i": 1 }}><b>Booked a slot</b> Booking #1 confirmed, 10:30</div>
+        <div style={{ "--i": 2 }}><b>Looked up clinic info</b> Found: address</div>
+      </div>
+    ),
+  },
+  {
+    n: "05", t: "Owner dashboard", wide: true,
+    d: "A JWT login unlocks full phone numbers and cancellation. Public visitors only ever see masked numbers.",
+    v: () => (
+      <div className="rows">
+        <div><span>Public view</span><b>0300***567</b></div>
+        <div className="own"><span>Owner view</span><b>03001234567</b></div>
+      </div>
+    ),
+  },
+  {
+    n: "06", t: "Grounded answers",
+    d: "Address, hours and doctor come from a knowledge base.",
+    v: () => (
+      <div className="langs">
+        <p>Fees kitni hain?</p>
+        <p>Clinic mu'ayena ke baad batata hai.</p>
+        <span className="tag-ok">No invented prices</span>
+      </div>
+    ),
+  },
 ];
 
 const STEPS = [
   ["Ask", "The patient writes in their own words, like \"kal shaam ko waqt mil sakta hai?\"."],
   ["The agent checks", "It calls the diary tool, reads the free slots and offers times as tappable buttons."],
   ["Confirmed", "After a clear yes, it books the slot and hands back a booking ID."],
+];
+
+const Icon = {
+  tools: <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>,
+  slots: <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>,
+  tests: <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>,
+  globe: <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18-3-3-3-15 0-18z" /></svg>,
+};
+
+const STATS = [
+  [4, "agent tools", "Check, book, cancel and search", Icon.tools],
+  [13, "daily slots", "Across two sessions, Monday to Saturday", Icon.slots],
+  [13, "automated tests", "Run on every push with GitHub Actions", Icon.tests],
+  [3, "languages", "Roman Urdu, Urdu and English", Icon.globe],
 ];
 
 const FAQ = [
@@ -45,7 +113,7 @@ function Counter({ to }) {
       io.disconnect();
       const t0 = performance.now();
       const tick = (t) => {
-        const p = Math.min((t - t0) / 1200, 1);
+        const p = Math.min((t - t0) / 1400, 1);
         setN(Math.round(to * (1 - Math.pow(1 - p, 3))));
         if (p < 1) requestAnimationFrame(tick);
       };
@@ -57,12 +125,40 @@ function Counter({ to }) {
   return <span ref={ref}>{n}</span>;
 }
 
+// Full-width band with its own neon beams and glow behind a centered section.
+function Band({ id, tone = "a", className = "", children }) {
+  return (
+    <div className={`band tone-${tone}`} id={id}>
+      <i className="bm l" /><i className="bm r" /><i className="gl" />
+      <section className={`sec ${className}`}>{children}</section>
+    </div>
+  );
+}
+
+function FeatureCard({ f }) {
+  const spot = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
+  return (
+    <article className={`fcard${f.wide ? " wide" : ""}`} onMouseMove={spot} data-reveal>
+      <span className="idx">{f.n}</span>
+      <h3>{f.t}</h3>
+      <p>{f.d}</p>
+      <div className="vis">{f.v()}</div>
+    </article>
+  );
+}
+
+const Wordmark = () => <span className="wordmark">Mulaqat</span>;
+
 export default function App() {
   useReveal();
   return (
     <>
       <nav className="nav">
-        <a className="logo" href="#top"><span className="dot" />Mulaqat</a>
+        <a className="logo" href="#top"><Wordmark /></a>
         <div className="links">
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
@@ -94,12 +190,10 @@ export default function App() {
       </header>
 
       <div className="marquee" aria-label="Built with">
-        <div className="track">
-          {[...STACK, ...STACK].map((s, i) => <span key={i}>{s}</span>)}
-        </div>
+        <div className="track">{[...STACK, ...STACK].map((s, i) => <span key={i}>{s}</span>)}</div>
       </div>
 
-      <section className="sec">
+      <Band tone="c">
         <p className="badge" data-reveal>The challenge</p>
         <h2 data-reveal>Clinics are busy. Patients still need answers.</h2>
         <div className="grid3">
@@ -109,21 +203,15 @@ export default function App() {
             </article>
           ))}
         </div>
-      </section>
+      </Band>
 
-      <section className="sec" id="features">
+      <Band id="features" tone="a">
         <p className="badge" data-reveal>Capabilities</p>
         <h2 data-reveal>Everything a front desk needs, built on an agent</h2>
-        <div className="bento">
-          {FEATURES.map(([t, d, w], i) => (
-            <article key={t} className={`card glow ${w}`} data-reveal style={{ "--d": `${i * 70}ms` }}>
-              <h3>{t}</h3><p>{d}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+        <div className="bento">{FEATURES.map((f) => <FeatureCard key={f.n} f={f} />)}</div>
+      </Band>
 
-      <section className="sec" id="how">
+      <Band id="how" tone="b">
         <p className="badge" data-reveal>Process</p>
         <h2 data-reveal>How Mulaqat works</h2>
         <ol className="steps">
@@ -134,23 +222,31 @@ export default function App() {
             </li>
           ))}
         </ol>
-      </section>
+      </Band>
 
-      <section className="sec stats" data-reveal>
-        <div><b><Counter to={4} /></b><span>agent tools</span></div>
-        <div><b><Counter to={13} /></b><span>daily slots</span></div>
-        <div><b><Counter to={13} /></b><span>automated tests</span></div>
-        <div><b><Counter to={3} /></b><span>languages</span></div>
-      </section>
+      <Band tone="a">
+        <p className="badge" data-reveal>By the numbers</p>
+        <h2 data-reveal>Small project, solid engineering</h2>
+        <div className="stat-grid">
+          {STATS.map(([n, label, note, icon], i) => (
+            <div key={label} className="stat" data-reveal style={{ "--d": `${i * 90}ms` }}>
+              {icon}
+              <b><Counter to={n} /></b>
+              <strong>{label}</strong>
+              <span>{note}</span>
+            </div>
+          ))}
+        </div>
+      </Band>
 
-      <section className="sec" id="demo">
+      <Band id="demo" tone="a" className="wideband">
         <p className="badge" data-reveal>Live demo</p>
         <h2 data-reveal>Try it yourself</h2>
-        <p className="lede" data-reveal>Ask for a time, a fee or the address. Watch the ledger on the right as the agent works.</p>
+        <p className="lede" data-reveal>Ask for a time, an address or a booking. Watch the ledger on the right as the agent works.</p>
         <div data-reveal><Console /></div>
-      </section>
+      </Band>
 
-      <section className="sec narrow" id="faq">
+      <Band id="faq" tone="b" className="narrow">
         <p className="badge" data-reveal>FAQ</p>
         <h2 data-reveal>Questions, answered</h2>
         {FAQ.map(([q, a]) => (
@@ -158,16 +254,33 @@ export default function App() {
             <summary>{q}</summary><p>{a}</p>
           </details>
         ))}
-      </section>
+      </Band>
 
-      <section className="sec final" data-reveal>
-        <h2>See the agent book an appointment</h2>
-        <a className="btn" href="#demo">Open the demo</a>
-      </section>
+      <Band tone="final" className="final">
+        <h2 data-reveal>See the agent book an appointment</h2>
+        <a className="btn" href="#demo" data-reveal>Open the demo</a>
+      </Band>
 
       <footer className="foot">
-        <span className="logo"><span className="dot" />Mulaqat</span>
-        <p>Unofficial demo for Multan Dental Clinic, built only from publicly listed information. Not affiliated with or endorsed by the clinic.</p>
+        <div className="foot-top">
+          <div>
+            <a className="logo" href="#top"><Wordmark /></a>
+            <p className="foot-note">
+              Unofficial demo for Multan Dental Clinic, built only from publicly listed information.
+              Not affiliated with or endorsed by the clinic.
+            </p>
+          </div>
+          <nav className="foot-links" aria-label="Footer">
+            <a href="#features">Features</a>
+            <a href="#how">How it works</a>
+            <a href="#demo">Demo</a>
+            <a href="#faq">FAQ</a>
+          </nav>
+          <p className="by">
+            Built by <a href={PORTFOLIO} target="_blank" rel="noopener noreferrer">Asma Shahzadi</a>
+          </p>
+        </div>
+        <div className="mega" aria-hidden="true">Mulaqat</div>
       </footer>
     </>
   );
