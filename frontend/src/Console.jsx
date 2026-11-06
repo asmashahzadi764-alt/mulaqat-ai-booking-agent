@@ -30,6 +30,14 @@ function summarize({ tool, output: o = {} }) {
   return "";
 }
 
+function renderText(s) {
+  return s.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.length > 4 && part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
 const readToken = () => { try { return sessionStorage.getItem("owner") || ""; } catch { return ""; } };
 const saveToken = (t) => { try { t ? sessionStorage.setItem("owner", t) : sessionStorage.removeItem("owner"); } catch { /* ignore */ } };
 
@@ -169,7 +177,7 @@ export default function Console() {
           )}
           {history.map((m, i) => (
             <div key={i} className={`row ${m.role}`}>
-              <p className={`msg ${m.role}`}>{m.content}</p>
+              <p className={`msg ${m.role}`}>{renderText(m.content)}</p>
               {m.slots && (
                 <div className="chips">
                   {m.slots.free.map((t) => (
