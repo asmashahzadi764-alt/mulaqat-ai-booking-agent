@@ -9,7 +9,7 @@ Patients write in Roman Urdu, Urdu or English. The agent checks the diary, books
 <p>
   <a href="https://mulaqat-ai-booking-agent.vercel.app/"><img src="https://img.shields.io/badge/Live_Demo-Open_App-2bff88?style=for-the-badge&logo=vercel&logoColor=black" alt="Live demo" /></a>
   <a href="https://mulaqat-api.onrender.com/api/health"><img src="https://img.shields.io/badge/API-Health_Check-46E3B7?style=for-the-badge&logo=render&logoColor=black" alt="API health" /></a>
-  <a href="https://asmashahzadi764-alt.github.io/Personal-Portfolio/"><img src="https://img.shields.io/badge/Portfolio-Asma_Shahzadi-0b0f0d?style=for-the-badge&logo=githubpages&logoColor=2bff88" alt="Portfolio" /></a>
+  <a href="https://asma-portfolio-ten-rho.vercel.app/"><img src="https://img.shields.io/badge/Portfolio-Asma_Shahzadi-0b0f0d?style=for-the-badge&logo=githubpages&logoColor=2bff88" alt="Portfolio" /></a>
   <a href="https://github.com/asmashahzadi764-alt/mulaqat-ai-booking-agent"><img src="https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Source code" /></a>
 </p>
 
@@ -224,7 +224,7 @@ Known limits of the free plans:
 
 ## Author
 
-<a href="https://asmashahzadi764-alt.github.io/Personal-Portfolio/"><img src="https://img.shields.io/badge/Built_by-Asma_Shahzadi-2bff88?style=for-the-badge&logoColor=black" alt="Built by Asma Shahzadi" /></a>
+<a href="https://asma-portfolio-ten-rho.vercel.app/"><img src="https://img.shields.io/badge/Built_by-Asma_Shahzadi-2bff88?style=for-the-badge&logoColor=black" alt="Built by Asma Shahzadi" /></a>
 <a href="https://github.com/asmashahzadi764-alt"><img src="https://img.shields.io/badge/GitHub-asmashahzadi764--alt-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub profile" /></a>
 
 If this project helped or interested you, a star on the repository is appreciated.
