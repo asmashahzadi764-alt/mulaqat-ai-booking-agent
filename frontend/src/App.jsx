@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Console from "./Console.jsx";
 import useReveal from "./useReveal.js";
 
-const PORTFOLIO = "https://asmashahzadi764-alt.github.io/Personal-Portfolio/";
+const PORTFOLIO = "https://asma-portfolio-ten-rho.vercel.app/";
 const STACK = ["React 19", "Vite", "FastAPI", "Gemini API", "SQLite", "JWT", "pytest", "GitHub Actions"];
 const TOOLS = ["check_slots", "book_appointment", "cancel_appointment", "search_faq"];
 
